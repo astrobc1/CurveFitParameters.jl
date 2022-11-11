@@ -36,12 +36,26 @@ end
 
 Base.length(pars::Parameters) = length(pars.dict)
 Base.merge!(pars::Parameters, pars2::Parameters) = merge!(pars.dict, pars2.dict)
-Base.getindex(pars::Parameters, key::String) = getindex(pars.dict, key)
 Base.firstindex(pars::Parameters) = firstindex(pars.dict)
+Base.getindex(pars::Parameters, key::String) = getindex(pars.dict, key)
 Base.lastindex(pars::Parameters) = lastindex(pars.dict)
 Base.iterate(pars::Parameters) = iterate(pars.dict)
 Base.keys(pars::Parameters) = keys(pars.dict)
 Base.values(pars::Parameters) = values(pars.dict)
+
+function Base.getproperty(pars::Parameters, s::Symbol)
+    if s == :dict
+        return getfield(pars, s)
+    end
+    return pars[string(s)]
+end
+
+function Base.setproperty!(pars::Parameters, s::Symbol, v)
+    if s == :dict
+        return setfield!(pars, s, v)
+    end
+    pars[string(s)] = v
+end
 
 function set_name!(par::Parameter, name::String)
     if isnothing(par.name)
