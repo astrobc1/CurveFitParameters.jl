@@ -1,7 +1,22 @@
 import DataStructures: OrderedDict
 
-export Parameter, Parameters, num_varied, is_varied, to_vecs, set_values!
+export Parameter, Parameters, num_varied, is_varied, to_vecs, set_values!, set_name!
 
+"""
+Type for a model parameter.
+
+# Fields:
+- `name::String`: The name of the parameter.
+- `value::Float64`: The current value of the parameter.
+- `lower_bound::Float64`: The lower bound.
+- `upper_bound::Float64`: The upper bound.
+- `vary::Bool`: Whether or not to vary the parameter during optimization.
+- `latex_str::String`: The LaTeX representation of the parameter name.
+
+# Constructor:
+    Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true, latex_str=nothing)
+Construct a new parameter. The parameter name does not have to be provided and will be automatically set if using the dictionary interface.
+"""
 mutable struct Parameter
     name::Union{String, Nothing}
     value::Float64
@@ -11,14 +26,6 @@ mutable struct Parameter
     latex_str::Union{String, Nothing}
 end
 
-struct Parameters
-    dict::OrderedDict{String, Parameter}
-end
-
-"""
-    Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true, latex_str=nothing)
-Construct a new parameter. The parameter name does not have to be provided and will be automatically set if using the dictionary interface.
-"""
 function Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true, latex_str=nothing)
     if lower_bound == upper_bound
         vary = false
@@ -26,12 +33,45 @@ function Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bou
     return Parameter(name, value, lower_bound, upper_bound, vary, latex_str)
 end
 
+
 """
+Type for a set of model parameters - wraps an `OrderedDict{String, Parameter}`. Implements the `AbstractDict` interface. Single `Parameter`'s can be accessed via `params.name` or `params["name"]`.
+    
+# Constructor:
     Parameters()
-Construct an empty Parameters struct.
+Constructs an empty set of parameters.
+
+    Parameters(x::AbstractVector{<:Real}, names::AbstractVector{<:AbstractString}, lower_bounds=nothing, upper_bounds=nothing, vary=nothing)
+Construct a set of parameters from `Vector`'s.
 """
+struct Parameters
+    dict::OrderedDict{String, Parameter}
+end
+
 function Parameters()
     return Parameters(OrderedDict{String, Parameter}())
+end
+
+"""
+    Parameters(x::AbstractVector{<:Real}, names::AbstractVector{<:AbstractString}, lower_bounds=nothing, upper_bounds=nothing, vary=nothing)
+Constructor from vectors.
+"""
+function Parameters(x::AbstractVector{<:Real}, names::AbstractVector{<:AbstractString}, lower_bounds=nothing, upper_bounds=nothing, vary=nothing)
+    pars = Parameters()
+    nx = length(x)
+    for (i, name) ∈ enumerate(names)
+        if isnothing(vary)
+            _vary = true
+        end
+        if isnothing(lower_bounds)
+            lb = -Inf
+        end
+        if isnothing(upper_bounds)
+            ub = Inf
+        end
+        pars[name] = Parameter(name=name, value=x[i], lower_bound=lb, upper_bound=ub, vary=_vary)
+    end
+    return pars
 end
 
 Base.length(pars::Parameters) = length(pars.dict)
@@ -57,6 +97,10 @@ function Base.setproperty!(pars::Parameters, s::Symbol, v)
     pars[string(s)] = v
 end
 
+"""
+    set_name!(par::Parameter, name::String)
+Sets the name of the parameter and the `latex_str` field if not already set.
+"""
 function set_name!(par::Parameter, name::String)
     if isnothing(par.name)
         par.name = name
@@ -85,6 +129,10 @@ function Base.show(io::IO, pars::Parameters)
     end
 end
 
+"""
+    num_varied(pars::Parameters)
+Returns number of varied parameters.
+"""
 function num_varied(pars::Parameters)
     n = 0
     for par ∈ values(pars)
@@ -95,10 +143,18 @@ function num_varied(pars::Parameters)
     return n
 end
 
+"""
+    is_varied(par::Parameter)
+Returns `true` if the `Parameter`'s vary field is `true` and if `lower_bound != upper_bound`.
+"""
 function is_varied(par::Parameter)
     return (par.lower_bound != par.upper_bound) && par.vary
 end
 
+"""
+    to_vecs(pars::Parameters)
+Unpacks the parameter fields to `Vector`'s. Returns a `NamedTuple` with fields `names, values, lower_bounds, upper_bounds, vary, latex_str`.
+"""
 function to_vecs(pars::Parameters)
     names = String[par.name for par ∈ values(pars)]
     _values = Float64[par.value for par ∈ values(pars)]
@@ -110,30 +166,12 @@ function to_vecs(pars::Parameters)
     return out
 end
 
+"""
+    set_values!(pars::Parameters, x::Vector)
+Sets the values of each parameter to the value in `x`.
+"""
 function set_values!(pars::Parameters, x::Vector)
     for (i, par) ∈ enumerate(values(pars))
         par.value = x[i]
     end
-end
-
-"""
-    Parameters(x::AbstractVector{<:Real}, names::AbstractVector{<:AbstractString}, lower_bounds=nothing, upper_bounds=nothing, vary=nothing)
-Constructor from vectors.
-"""
-function Parameters(x::AbstractVector{<:Real}, names::AbstractVector{<:AbstractString}, lower_bounds=nothing, upper_bounds=nothing, vary=nothing)
-    pars = Parameters()
-    nx = length(x)
-    for (i, name) ∈ enumerate(names)
-        if isnothing(vary)
-            _vary = true
-        end
-        if isnothing(lower_bounds)
-            lb = -Inf
-        end
-        if isnothing(upper_bounds)
-            ub = Inf
-        end
-        pars[name] = Parameter(name=name, value=x[i], lower_bound=lb, upper_bound=ub, vary=_vary)
-    end
-    return pars
 end
