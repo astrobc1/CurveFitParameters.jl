@@ -95,7 +95,12 @@ function Base.setproperty!(pars::Parameters, s::Symbol, v)
     pars[string(s)] = v
 end
 
-Base.setindex!(pars::Parameters, par::Parameter, key::String) = setindex!(pars.dict, par, key)
+function Base.setindex!(pars::Parameters, par::Parameter, key::String)
+    if par.name == ""
+        par.name = key
+    end
+    setindex!(pars.dict, par, key)
+end
 
 function Base.show(io::IO, par::Parameter)
     if par.vary
