@@ -1,6 +1,6 @@
 import DataStructures: OrderedDict
 
-export Parameter, Parameters, num_varied, is_varied, to_vecs, set_values!, set_name!
+export Parameter, Parameters, num_varied, is_varied, to_vecs, set_values!
 
 """
 Type for a model parameter.
@@ -11,26 +11,24 @@ Type for a model parameter.
 - `lower_bound::Float64`: The lower bound.
 - `upper_bound::Float64`: The upper bound.
 - `vary::Bool`: Whether or not to vary the parameter during optimization.
-- `latex_str::String`: The LaTeX representation of the parameter name.
 
 # Constructor:
-    Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true, latex_str=nothing)
+    Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true)
 Construct a new parameter. The parameter name does not have to be provided and will be automatically set if using the dictionary interface.
 """
 mutable struct Parameter
-    name::Union{String, Nothing}
+    name::String
     value::Float64
     lower_bound::Float64
     upper_bound::Float64
     vary::Bool
-    latex_str::Union{String, Nothing}
 end
 
-function Parameter(;name=nothing, value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true, latex_str=nothing)
+function Parameter(;name::String="", value::Real, lower_bound::Real=-Inf, upper_bound::Real=Inf, vary::Bool=true)
     if lower_bound == upper_bound
         vary = false
     end
-    return Parameter(name, value, lower_bound, upper_bound, vary, latex_str)
+    return Parameter(name, value, lower_bound, upper_bound, vary)
 end
 
 
@@ -97,23 +95,7 @@ function Base.setproperty!(pars::Parameters, s::Symbol, v)
     pars[string(s)] = v
 end
 
-"""
-    set_name!(par::Parameter, name::String)
-Sets the name of the parameter and the `latex_str` field if not already set.
-"""
-function set_name!(par::Parameter, name::String)
-    if isnothing(par.name)
-        par.name = name
-    end
-    if isnothing(par.latex_str)
-        par.latex_str = name
-    end
-end
-
-function Base.setindex!(pars::Parameters, par::Parameter, key::String)
-    set_name!(par, key)
-    setindex!(pars.dict, par, key)
-end
+Base.setindex!(pars::Parameters, par::Parameter, key::String) = setindex!(pars.dict, par, key)
 
 function Base.show(io::IO, par::Parameter)
     if par.vary
@@ -153,7 +135,7 @@ end
 
 """
     to_vecs(pars::Parameters)
-Unpacks the parameter fields to `Vector`'s. Returns a `NamedTuple` with fields `names, values, lower_bounds, upper_bounds, vary, latex_str`.
+Unpacks the parameter fields to `Vector`'s. Returns a `NamedTuple` with fields `names, values, lower_bounds, upper_bounds, vary`.
 """
 function to_vecs(pars::Parameters)
     names = String[par.name for par ∈ values(pars)]
@@ -161,17 +143,23 @@ function to_vecs(pars::Parameters)
     lower_bounds = Float64[par.lower_bound for par ∈ values(pars)]
     upper_bounds = Float64[par.upper_bound for par ∈ values(pars)]
     vary = BitVector([is_varied(par) for par ∈ values(pars)])
-    latex_str = String[par.latex_str for par ∈ values(pars)]
-    out = (;names=names, values=_values, lower_bounds=lower_bounds, upper_bounds=upper_bounds, vary=vary, latex_str=latex_str)
+    out = (;names=names, values=_values, lower_bounds=lower_bounds, upper_bounds=upper_bounds, vary=vary)
     return out
 end
 
 """
-    set_values!(pars::Parameters, x::Vector)
+    set_values!(pars::Parameters, x::AbstractVector{<:Real})
+    set_values!(pars::Parameters, x::Real)
 Sets the values of each parameter to the value in `x`.
 """
-function set_values!(pars::Parameters, x::Vector)
+function set_values!(pars::Parameters, x::AbstractVector{<:Real})
     for (i, par) ∈ enumerate(values(pars))
-        par.value = x[i]
+        par.value = float(x[i])
+    end
+end
+
+function set_values!(pars::Parameters, x::Real)
+    for (i, par) ∈ enumerate(values(pars))
+        par.value = float(x)
     end
 end
