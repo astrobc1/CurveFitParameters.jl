@@ -76,8 +76,10 @@ Base.length(pars::Parameters) = length(pars.dict)
 Base.merge!(pars::Parameters, pars2::Parameters) = merge!(pars.dict, pars2.dict)
 Base.firstindex(pars::Parameters) = firstindex(pars.dict)
 Base.getindex(pars::Parameters, key::String) = getindex(pars.dict, key)
+Base.getindex(pars::Parameters, key::Int) = collect(values(pars))[key]
 Base.lastindex(pars::Parameters) = lastindex(pars.dict)
 Base.iterate(pars::Parameters) = iterate(pars.dict)
+Base.iterate(pars::Parameters, k::Int64) = iterate(pars.dict, k)
 Base.keys(pars::Parameters) = keys(pars.dict)
 Base.values(pars::Parameters) = values(pars.dict)
 
